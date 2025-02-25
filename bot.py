@@ -75,18 +75,32 @@ async def start(update: Update, context: CallbackContext):
     """Répond à la commande /start."""
     await update.message.reply_text("Salut ! 🌤️ Je t'enverrai la météo tous les jours à 9h.")
 
+async def send_weather_loop(application: Application):
+    while True:
+        now = datetime.now()
+        target_time = now.replace(hour=9, minute=0, second=0, microsecond=0)
+
+        if now > target_time:
+            target_time += timedelta(days=1)  # Si on est déjà passé 9h, planifier pour demain
+        
+        delay = (target_time - now).total_seconds()
+        await asyncio.sleep(delay)  # Attendre jusqu'à 9h
+
+        await send_daily_weather(application)  # Envoyer la météo
+        await asyncio.sleep(86400)  # Attendre 24h avant la prochaine exécution
+
 async def main() -> None:
     application = Application.builder().token(TOKEN).build()
 
-    # Initialisation du JobQueue
-    job_queue = application.job_queue
-    job_queue.run_daily(send_daily_weather, time=datetime.strptime("09:00", "%H:%M").time())
-
-    # Ajouter les gestionnaires
+    # Ajouter les gestionnaires de commandes
     application.add_handler(CommandHandler("meteo", send_weather))
+
+    # Lancer l'envoi automatique en arrière-plan
+    asyncio.create_task(send_weather_loop(application))
 
     # Lancer l'application
     await application.run_polling()
+
 
 
 if __name__ == "__main__":
