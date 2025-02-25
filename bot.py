@@ -2,7 +2,7 @@ import asyncio
 import aiohttp
 from datetime import datetime, timedelta
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext, ApplicationBuilder
+from telegram.ext import Application, CallbackContext, CommandHandler
 
 # Ton token Telegram
 TOKEN = "7511100441:AAGtgLZeSyIrkK4No4luBF7TdzP5J6cQThI"
@@ -49,16 +49,6 @@ async def get_weather(city):
             temp = data['main']['temp']
             return f"{weather}, {temp}°C"
 
-async def send_weather(update: Update, context: CallbackContext):
-    """Répond à la commande /meteo en affichant la météo en temps réel."""
-    message = "🌤️ *Météo du jour :*\n"
-    
-    for city, emoji in VILLES.items():
-        meteo = await get_weather(city)
-        message += f"{emoji} *{city.upper()}* : {meteo}\n"
-
-    await update.message.reply_text(message, parse_mode="Markdown")
-
 async def send_daily_weather(context: CallbackContext):
     """Envoie automatiquement la météo tous les matins à 9h."""
     message = "🌤️ *Météo du jour :*\n"
@@ -91,9 +81,6 @@ async def send_weather_loop(application: Application):
 
 async def main() -> None:
     application = Application.builder().token(TOKEN).build()
-
-    # Ajouter les gestionnaires de commandes
-    application.add_handler(CommandHandler("meteo", send_weather))
 
     # Lancer l'envoi automatique en arrière-plan
     application.job_queue.run_repeating(send_daily_weather, interval=86400, first=0)  # Planifier l'envoi tous les jours
