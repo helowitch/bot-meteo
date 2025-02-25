@@ -75,20 +75,19 @@ async def start(update: Update, context: CallbackContext):
     """Répond à la commande /start."""
     await update.message.reply_text("Salut ! 🌤️ Je t'enverrai la météo tous les jours à 9h.")
 
-async def main():
-    """Initialisation du bot."""
-    application = ApplicationBuilder().token(TOKEN).build()
+async def main() -> None:
+    application = Application.builder().token(TOKEN).build()
 
-    # Ajout des commandes
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("meteo", send_weather))
-
-    # Configuration du JobQueue
+    # Initialisation du JobQueue
     job_queue = application.job_queue
     job_queue.run_daily(send_daily_weather, time=datetime.strptime("09:00", "%H:%M").time())
 
-    # Lancer le bot
+    # Ajouter les gestionnaires
+    application.add_handler(CommandHandler("meteo", send_weather))
+
+    # Lancer l'application
     await application.run_polling()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
