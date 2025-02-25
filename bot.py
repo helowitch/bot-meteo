@@ -2,7 +2,7 @@ import asyncio
 import aiohttp
 from datetime import datetime, timedelta
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, CallbackContext, ApplicationBuilder
 
 # Ton token Telegram
 TOKEN = "7511100441:AAGtgLZeSyIrkK4No4luBF7TdzP5J6cQThI"
@@ -96,11 +96,11 @@ async def main() -> None:
     application.add_handler(CommandHandler("meteo", send_weather))
 
     # Lancer l'envoi automatique en arrière-plan
-    asyncio.create_task(send_weather_loop(application))
+    application.job_queue.run_repeating(send_daily_weather, interval=86400, first=0)  # Planifier l'envoi tous les jours
 
-    # Lancer l'application
+    # Lancer l'application avec une boucle d'événements déjà active
     await application.run_polling()
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    # L'appel à asyncio.run est supprimé ici, nous utilisons déjà une boucle d'événements
+    asyncio.get_event_loop().run_until_complete(main())
