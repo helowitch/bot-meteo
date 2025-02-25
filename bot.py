@@ -1,6 +1,6 @@
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext
-import aiohttp  # Remplace requests par aiohttp
+from telegram.ext import Application, CommandHandler, CallbackContext, JobQueue
+import aiohttp
 import asyncio
 from datetime import datetime, timedelta
 
@@ -71,18 +71,18 @@ async def send_daily_weather(application: Application):
     await application.bot.send_message(chat_id='ID_DU_CHAT', text=message)
 
 # Fonction pour planifier l'envoi de la météo tous les matins à 9h
-async def schedule_daily_weather(application: Application):
+async def schedule_daily_weather(context: CallbackContext):
     now = datetime.now()
     first_run = now.replace(hour=9, minute=0, second=0, microsecond=0)
     if now > first_run:
         first_run += timedelta(days=1)  # Si on est déjà passé 9h, on planifie pour demain
     delay = (first_run - now).total_seconds()
     await asyncio.sleep(delay)
-    await send_daily_weather(application)
+    await send_daily_weather(context.application)
     # Répéter tous les jours à 9h
     while True:
         await asyncio.sleep(86400)  # 24 heures
-        await send_daily_weather(application)
+        await send_daily_weather(context.application)
 
 # Fonction principale
 async def main() -> None:
