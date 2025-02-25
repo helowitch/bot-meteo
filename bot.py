@@ -2,7 +2,7 @@ import asyncio
 import aiohttp
 from datetime import datetime, timedelta
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext, ApplicationBuilder, JobQueue
+from telegram.ext import Application, CommandHandler, CallbackContext
 
 # Ton token Telegram
 TOKEN = "7511100441:AAGtgLZeSyIrkK4No4luBF7TdzP5J6cQThI"
@@ -101,7 +101,6 @@ async def main() -> None:
     # Lancer l'application
     await application.run_polling()
 
-
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
