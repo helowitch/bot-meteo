@@ -1,6 +1,6 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
-import requests
+import aiohttp  # Remplace requests par aiohttp
 import asyncio
 from datetime import datetime, timedelta
 
@@ -25,7 +25,7 @@ async def get_chat_id(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(f"L'ID de ce chat est : {chat_id}")
 
 # Fonction pour récupérer la météo en temps réel
-def get_weather(city):
+async def get_weather(city):
     # Remplace par les coordonnées correspondantes pour chaque ville
     city_coords = {
         "Rieux": {"lat": 47.826, "lon": -2.002},
@@ -38,20 +38,22 @@ def get_weather(city):
 
     lat, lon = city_coords[city]["lat"], city_coords[city]["lon"]
     url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}&units=metric&lang=fr"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        weather = data['weather'][0]['description']
-        temp = data['main']['temp']
-        return f"{weather}, {temp}°C"
-    else:
-        return "Données météo non disponibles."
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                data = await response.json()
+                weather = data['weather'][0]['description']
+                temp = data['main']['temp']
+                return f"{weather}, {temp}°C"
+            else:
+                return "Données météo non disponibles."
 
 # Fonction pour afficher la météo en temps réel
 async def send_weather(update: Update, context: CallbackContext):
     message = "🌤️ Météo du jour :\n"
     for city, emoji in VILLES.items():
-        weather = get_weather(city)
+        weather = await get_weather(city)  # Utilise await pour appeler la fonction asynchrone
         message += f"{emoji} {city.upper()} : {weather}\n"
     await update.message.reply_text(message)
 
@@ -59,7 +61,7 @@ async def send_weather(update: Update, context: CallbackContext):
 async def send_daily_weather(application: Application):
     message = "🌤️ Météo du jour :\n"
     for city, emoji in VILLES.items():
-        weather = get_weather(city)
+        weather = await get_weather(city)  # Utilise await pour appeler la fonction asynchrone
         message += f"{emoji} {city.upper()} : {weather}\n"
     
     message += "\nBonne journée !"
@@ -77,4 +79,25 @@ async def schedule_daily_weather(application: Application):
     delay = (first_run - now).total_seconds()
     await asyncio.sleep(delay)
     await send_daily_weather(application)
-    # Répéter tous les jo
+    # Répéter tous les jours à 9h
+    while True:
+        await asyncio.sleep(86400)  # 24 heures
+        await send_daily_weather(application)
+
+# Fonction principale
+async def main() -> None:
+    application = Application.builder().token(TOKEN).build()
+
+    # Ajouter les gestionnaires
+    application.add_handler(CommandHandler("meteo", send_weather))
+    application.add_handler(CommandHandler("chatid", get_chat_id))  # Ajout de la commande pour récupérer l'ID du chat
+
+    # Planifier l'envoi automatique à 9h
+    application.job_queue.run_once(schedule_daily_weather, 0)
+
+    # Lancer l'application
+    await application.run_polling()
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
