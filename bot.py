@@ -51,11 +51,21 @@ async def meteo(update: Update, context: CallbackContext) -> None:
     message = "🌤️ Météo du jour :\n" + "\n".join(weather_reports)
     await update.message.reply_text(message)
 
+# async def schedule_weather(update: Update, context: CallbackContext):
+#     """Programme l’envoi automatique de la météo à 9h."""
+#     chat_id = update.message.chat_id
+#     context.job_queue.run_daily(send_weather, time=time(hour=9, minute=0), chat_id=chat_id)
+#     await update.message.reply_text("✅ Météo quotidienne programmée à 9h !")
+
 async def schedule_weather(update: Update, context: CallbackContext):
-    """Programme l’envoi automatique de la météo à 9h."""
+    """Programme l’envoi automatique de la météo immédiatement pour le test."""
     chat_id = update.message.chat_id
-    context.job_queue.run_daily(send_weather, time=time(hour=9, minute=0), chat_id=chat_id)
-    await update.message.reply_text("✅ Météo quotidienne programmée à 9h !")
+
+    # Planifie l'envoi immédiatement (ou après un court délai pour le test)
+    context.job_queue.run_once(send_weather, 60, chat_id=chat_id)  # Envoie après 60 secondes
+
+    await update.message.reply_text("✅ Météo programmée pour un test immédiat !")
+
 
 def main():
     print("Démarrage du bot...")
