@@ -1,93 +1,72 @@
-import asyncio
-import aiohttp
-from datetime import datetime, timedelta
 from telegram import Update
-from telegram.ext import Application, CallbackContext, CommandHandler
+from telegram.ext import Application, CommandHandler, CallbackContext
+import aiohttp
+import asyncio
+from datetime import time
 
 # Ton token Telegram
 TOKEN = "7511100441:AAGtgLZeSyIrkK4No4luBF7TdzP5J6cQThI"
+
 # Ta clé API OpenWeatherMap
 WEATHER_API_KEY = "b7627b3f7c126fbb649a846c7953ff21"
-# ID du groupe Telegram
-CHAT_ID = "-1001267100130"
 
 # Dictionnaire des villes avec emojis
 VILLES = {
-    "Rieux": "🩷 RIEUX",
-    "Chambéry": "💛 CHAMBÉRY",
-    "La Chapelle-Bouëxic": "🖤 LA CHAPELLE-BOUËXIC",
-    "Genève": "💚 GENÈVE",
-    "Bristol": "💙 BRISTOL",
-    "Roncq": "💜 RONCQ",
-}
-
-# Coordonnées des villes (nécessaire pour OpenWeatherMap)
-CITY_COORDS = {
-    "Rieux": {"lat": 47.826, "lon": -2.002},
-    "Chambéry": {"lat": 45.564, "lon": 5.911},
-    "La Chapelle-Bouëxic": {"lat": 47.827, "lon": -1.707},
-    "Genève": {"lat": 46.2044, "lon": 6.1432},
-    "Bristol": {"lat": 51.4545, "lon": -2.5879},
-    "Roncq": {"lat": 50.6472, "lon": 3.1111}
+    "Rieux,FR": "🩷 RIEUX",
+    "Chambéry,FR": "💛 CHAMBÉRY",
+    "La Chapelle-Bouëxic,FR": "🖤 LA CHAPELLE-BOUËXIC",
+    "Genève,CH": "💚 GENÈVE",
+    "Bristol,GB": "💙 BRISTOL",
+    "Roncq,FR": "💜 RONCQ",
+    "Montélimar,FR": "🤍 MONTÉLIMAR",  # Ajout de Montélimar
 }
 
 async def get_weather(city):
-    """Récupère la météo d'une ville via OpenWeatherMap."""
-    if city not in CITY_COORDS:
-        return "❌ Ville non trouvée"
-    
-    lat, lon = CITY_COORDS[city]["lat"], CITY_COORDS[city]["lon"]
-    url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}&units=metric&lang=fr"
-
+    """Récupère la météo pour une ville donnée."""
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric&lang=fr"
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
-            if response.status != 200:
-                return "❌ Météo indisponible"
+            if response.status == 200:
+                data = await response.json()
+                temp = data["main"]["temp"]
+                description = data["weather"][0]["description"]
+                return f"{VILLES[city]} : {temp}°C, {description}"
+            else:
+                return f"{VILLES[city]} : Impossible de récupérer la météo."
 
-            data = await response.json()
-            weather = data['weather'][0]['description']
-            temp = data['main']['temp']
-            return f"{weather}, {temp}°C"
+async def send_weather(context: CallbackContext):
+    """Envoie la météo quotidienne automatiquement."""
+    weather_reports = [await get_weather(city) for city in VILLES]
+    message = "🌤️ Météo du jour :\n" + "\n".join(weather_reports)
+    chat_id = context.job.chat_id
+    await context.bot.send_message(chat_id=chat_id, text=message)
 
-async def send_daily_weather(context: CallbackContext):
-    """Envoie automatiquement la météo tous les matins à 9h."""
-    message = "🌤️ *Météo du jour :*\n"
+async def start(update: Update, context: CallbackContext) -> None:
+    """Commande /start"""
+    await update.message.reply_text("Bonjour ! Tape /meteo pour voir la météo des villes sélectionnées.")
 
-    for city, emoji in VILLES.items():
-        meteo = await get_weather(city)
-        message += f"{emoji} *{city.upper()}* : {meteo}\n"
-    
-    message += "\nBonne journée !"
+async def meteo(update: Update, context: CallbackContext) -> None:
+    """Affiche la météo sur commande."""
+    weather_reports = [await get_weather(city) for city in VILLES]
+    message = "🌤️ Météo du jour :\n" + "\n".join(weather_reports)
+    await update.message.reply_text(message)
 
-    await context.bot.send_message(chat_id=CHAT_ID, text=message, parse_mode="Markdown")
+async def schedule_weather(update: Update, context: CallbackContext):
+    """Programme l’envoi automatique de la météo à 9h."""
+    chat_id = update.message.chat_id
+    context.job_queue.run_daily(send_weather, time=time(hour=9, minute=0), chat_id=chat_id)
+    await update.message.reply_text("✅ Météo quotidienne programmée à 9h !")
 
-async def start(update: Update, context: CallbackContext):
-    """Répond à la commande /start."""
-    await update.message.reply_text("Salut ! 🌤️ Je t'enverrai la météo tous les jours à 9h.")
-
-async def send_weather_loop(application: Application):
-    while True:
-        now = datetime.now()
-        target_time = now.replace(hour=9, minute=0, second=0, microsecond=0)
-
-        if now > target_time:
-            target_time += timedelta(days=1)  # Si on est déjà passé 9h, planifier pour demain
-        
-        delay = (target_time - now).total_seconds()
-        await asyncio.sleep(delay)  # Attendre jusqu'à 9h
-
-        await send_daily_weather(application)  # Envoyer la météo
-        await asyncio.sleep(86400)  # Attendre 24h avant la prochaine exécution
-
-async def main() -> None:
+def main():
+    print("Démarrage du bot...")
     application = Application.builder().token(TOKEN).build()
 
-    # Lancer l'envoi automatique en arrière-plan
-    application.job_queue.run_repeating(send_daily_weather, interval=86400, first=0)  # Planifier l'envoi tous les jours
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("meteo", meteo))
+    application.add_handler(CommandHandler("setmeteo", schedule_weather))
 
-    # Lancer l'application avec une boucle d'événements déjà active
-    await application.run_polling()
+    print("Lancement du polling...")
+    application.run_polling()
 
-if __name__ == "__main__":
-    # L'appel à asyncio.run est supprimé ici, nous utilisons déjà une boucle d'événements
-    asyncio.get_event_loop().run_until_complete(main())
+if __name__ == '__main__':
+    main()
