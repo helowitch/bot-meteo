@@ -43,8 +43,8 @@ async def get_weather(city_key):
     data = await fetch_meteo_data(params)
     
     if data and 'forecast' in data:
-        temp = data['forecast'][0]['temp2m']
-        desc = data['forecast'][0]['weather']['desc']
+        temp = data['forecast'][0]['temp']  # Température actuelle
+        desc = data['forecast'][0]['weather']['desc']  # Description météo
         return f"{VILLES[city_key]} : {temp}°C, {desc.capitalize()}"
     return f"{VILLES[city_key]} : Données indisponibles"
 
@@ -59,8 +59,8 @@ async def get_daily_forecast(city_key):
     data = await fetch_meteo_data(params)
     
     if data and 'forecast' in data:
-        temp = data['forecast'][0]['tmax']
-        desc = data['forecast'][0]['weather']['desc']
+        temp = data['forecast'][0]['tmax']  # Température maximale
+        desc = data['forecast'][0]['weather']['desc']  # Description météo
         return f"{VILLES[city_key]} : {temp}°C max, {desc.capitalize()}"
     return f"{VILLES[city_key]} : Prévisions indisponibles"
 
