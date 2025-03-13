@@ -23,11 +23,9 @@ VILLES = {
 
 async def fetch_meteo_data(params):
     """Fonction générique pour interroger l'API MeteoConcept"""
-    # Filtrer les paramètres None
-    filtered_params = {k: v for k, v in params.items() if v is not None}
     base_url = "https://api.meteo-concept.com/api/forecast/daily"
     async with aiohttp.ClientSession() as session:
-        async with session.get(base_url, params=filtered_params) as response:
+        async with session.get(base_url, params=params) as response:
             if response.status == 200:
                 return await response.json()
             return None
@@ -42,12 +40,12 @@ async def get_weather(city_key):
     }
     data = await fetch_meteo_data(params)
 
-    if data:
-        print(data)  # Imprime la réponse JSON pour le débogage
-        if 'forecast' in data and len(data['forecast']) > 0:
-            temp = data['forecast'][0].get('temp2m')  # Utilisez get pour éviter KeyError
-            desc = data['forecast'][0]['weather'].get('desc', 'Description indisponible')
-            return f"{VILLES[city_key]} : {temp}°C, {desc.capitalize()}"
+    if data and 'forecast' in data and len(data['forecast']) > 0:
+        forecast = data['forecast'][0]
+        temp = forecast.get('tmax')  # Utilisez get pour éviter KeyError
+        weather_code = forecast.get('weather')
+        desc = "Ensoleillé" if weather_code == 1 else "Description indisponible"  # Exemple de description
+        return f"{VILLES[city_key]} : {temp}°C, {desc}"
     return f"{VILLES[city_key]} : Données indisponibles"
 
 async def get_daily_forecast(city_key):
@@ -61,9 +59,11 @@ async def get_daily_forecast(city_key):
     data = await fetch_meteo_data(params)
 
     if data and 'forecast' in data:
-        temp = data['forecast'][0]['tmax']  # Température maximale
-        desc = data['forecast'][0]['weather']['desc']  # Description météo
-        return f"{VILLES[city_key]} : {temp}°C max, {desc.capitalize()}"
+        forecast = data['forecast'][0]
+        temp = forecast.get('tmax')  # Température maximale
+        weather_code = forecast.get('weather')
+        desc = "Ensoleillé" if weather_code == 1 else "Description indisponible"  # Exemple de description
+        return f"{VILLES[city_key]} : {temp}°C max, {desc}"
     return f"{VILLES[city_key]} : Prévisions indisponibles"
 
 async def send_daily_forecast(context: CallbackContext):
