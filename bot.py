@@ -15,7 +15,7 @@ VILLES = {
     "56194": "🩷 RIEUX",          # INSEE pour Rieux, FR
     "73065": "💛 CHAMBÉRY",       # INSEE pour Chambéry, FR
     "35057": "🖤 LA CHAPELLE-BOUËXIC", 
-    "46.204,6.143": "💚 GENÈVE",          # Coordonnées pour Genève
+    "46.204,6.143": "💚 GENÈVE",  # Coordonnées pour Genève
     "51.454,-2.587": "💙 BRISTOL",  # Coordonnées pour Bristol
     "59508": "💜 RONCQ",          # INSEE pour Roncq, FR
     "26198": "🤍 MONTÉLIMAR"      # INSEE pour Montélimar, FR
@@ -23,9 +23,11 @@ VILLES = {
 
 async def fetch_meteo_data(params):
     """Fonction générique pour interroger l'API MeteoConcept"""
-    base_url = "https://api.meteo-concept.com/api/"
+    # Filtrer les paramètres None
+    filtered_params = {k: v for k, v in params.items() if v is not None}
+    base_url = "https://api.meteo-concept.com/api/forecast/daily"
     async with aiohttp.ClientSession() as session:
-        async with session.get(base_url, params=params) as response:
+        async with session.get(base_url, params=filtered_params) as response:
             if response.status == 200:
                 return await response.json()
             return None
@@ -38,10 +40,10 @@ async def get_weather(city_key):
         'lat': city_key.split(',')[0] if ',' in city_key else None,
         'lon': city_key.split(',')[1] if ',' in city_key else None
     }
-    data = await fetch_meteo_data({**params, **{'hourly': 'false'}})
+    data = await fetch_meteo_data(params)
     
     if data and 'forecast' in data:
-        temp = data['forecast'][0]['temp']
+        temp = data['forecast'][0]['temp2m']
         desc = data['forecast'][0]['weather']['desc']
         return f"{VILLES[city_key]} : {temp}°C, {desc.capitalize()}"
     return f"{VILLES[city_key]} : Données indisponibles"
@@ -52,8 +54,7 @@ async def get_daily_forecast(city_key):
         'token': METEO_CONCEPT_API_KEY,
         'insee': city_key if city_key.isdigit() else None,
         'lat': city_key.split(',')[0] if ',' in city_key else None,
-        'lon': city_key.split(',')[1] if ',' in city_key else None,
-        'daily': 'true'
+        'lon': city_key.split(',')[1] if ',' in city_key else None
     }
     data = await fetch_meteo_data(params)
     
