@@ -14,7 +14,7 @@ METEO_CONCEPT_API_KEY = "cc0ee5d2b8f4459421ea9076c6e514cd8368587588ce3a38f7de9ca
 VILLES = {
     "56194": "🩷 RIEUX",          # INSEE pour Rieux, FR
     "73065": "💛 CHAMBÉRY",       # INSEE pour Chambéry, FR
-    "35057": "🖤 LA CHAPELLE-BOUËXIC", 
+    "35057": "🖤 LA CHAPELLE-BOUËXIC",
     "46.204,6.143": "💚 GENÈVE",  # Coordonnées pour Genève
     "51.454,-2.587": "💙 BRISTOL",  # Coordonnées pour Bristol
     "59508": "💜 RONCQ",          # INSEE pour Roncq, FR
@@ -41,11 +41,13 @@ async def get_weather(city_key):
         'lon': city_key.split(',')[1] if ',' in city_key else None
     }
     data = await fetch_meteo_data(params)
-    
-    if data and 'forecast' in data:
-        temp = data['forecast'][0]['temp']  # Température actuelle
-        desc = data['forecast'][0]['weather']['desc']  # Description météo
-        return f"{VILLES[city_key]} : {temp}°C, {desc.capitalize()}"
+
+    if data:
+        print(data)  # Imprime la réponse JSON pour le débogage
+        if 'forecast' in data and len(data['forecast']) > 0:
+            temp = data['forecast'][0].get('temp2m')  # Utilisez get pour éviter KeyError
+            desc = data['forecast'][0]['weather'].get('desc', 'Description indisponible')
+            return f"{VILLES[city_key]} : {temp}°C, {desc.capitalize()}"
     return f"{VILLES[city_key]} : Données indisponibles"
 
 async def get_daily_forecast(city_key):
@@ -57,7 +59,7 @@ async def get_daily_forecast(city_key):
         'lon': city_key.split(',')[1] if ',' in city_key else None
     }
     data = await fetch_meteo_data(params)
-    
+
     if data and 'forecast' in data:
         temp = data['forecast'][0]['tmax']  # Température maximale
         desc = data['forecast'][0]['weather']['desc']  # Description météo
@@ -84,7 +86,7 @@ async def meteo(update: Update, context: CallbackContext) -> None:
 async def schedule_weather(update: Update, context: CallbackContext):
     """Programme l’envoi automatique des prévisions à 9h."""
     chat_id = update.message.chat_id
-    context.job_queue.run_daily(send_daily_forecast, time=time(hour=8, minute=0), chat_id=chat_id)
+    context.job_queue.run_daily(send_daily_forecast, time=time(hour=9, minute=0), chat_id=chat_id)
     await update.message.reply_text("✅ Prévisions quotidiennes programmées à 9h !")
 
 def main():
