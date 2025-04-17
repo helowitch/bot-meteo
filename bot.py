@@ -13,7 +13,7 @@ WEATHER_API_KEY = "b7627b3f7c126fbb649a846c7953ff21"
 # Dictionnaire des villes avec emojis
 VILLES = {
     "Rieux,FR": "🩷 RIEUX",
-    "Chambéry,FR": "💛 CHAMBÉRY",
+    "Villaroger,FR": "💛 VILLAROGER",
     "La Chapelle-Bouëxic,FR": "🖤 LA CHAPELLE-BOUËXIC",
     "Genève,CH": "💚 GENÈVE",
     "Bristol,GB": "💙 BRISTOL",
@@ -69,7 +69,7 @@ async def meteo(update: Update, context: CallbackContext) -> None:
 async def schedule_weather(update: Update, context: CallbackContext):
     """Programme l’envoi automatique des prévisions à 9h."""
     chat_id = update.message.chat_id
-    context.job_queue.run_daily(send_daily_forecast, time=time(hour=8, minute=0), chat_id=chat_id)
+    context.job_queue.run_daily(send_daily_forecast, time=time(hour=7, minute=0), chat_id=chat_id)
     await update.message.reply_text("✅ Prévisions quotidiennes programmées à 9h !")
 
 def main():
